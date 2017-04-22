@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project default="compilar" name="Automacao com Ant" basedir=".">
+	<property name="tomcat" value="C:/Projetos/Apache/apache-tomcat-8.5.14" />
+	<property name="tomcat.deployment" value="${tomcat}/webapps" />
+	<property name="tomcat.bin" value="${tomcat}/bin" />
+	<property name="base" value="." />
+	<property name="source" value="${base}/src" />
+	<property name="WebContent1" value="${base}/build" />
+	<property name="classes" value="${WebContent1}/WEB-INF/classes" />
+	<property name="WebContent2" value="${base}/WebContent" />
+	
+	<target name="compilar">
+		<deltree dir="${base}/build/classes" />
+		<mkdir dir="${classes}" />
+		<javac includeantruntime="false" srcdir="${source}" destdir="${classes}" />
+		<antcall target="gerarWar" />
+	</target>	
+	<target name="gerarWar">
+		<war warfile="WAnt.war" needxmlfile="false">
+			<fileset dir="${WebContent1}" />
+			<fileset dir="${WebContent2}" />
+		</war>
+		<antcall target="deployWar" />
+	</target>	
+	<target name="deployWar">
+		<copy file="${base}/WAnt.war" todir="${tomcat.deployment}"/>
+		<delete file="${base}/WAnt.war" />
+	</target>
+	
+	<target name="iniciarTomcat8">
+		<exec executable="${tomcat.bin}/startup.bat"/>
+	</target>
+	
+	<target name="finalizarTomcat8">
+		<exec executable="${tomcat.bin}/shutdown.bat"/>
+	</target>
+	
+</project>
