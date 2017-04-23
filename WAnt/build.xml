@@ -8,23 +8,28 @@
 	<property name="WebContent1" value="${base}/build" />
 	<property name="classes" value="${WebContent1}/WEB-INF/classes" />
 	<property name="WebContent2" value="${base}/WebContent" />
+	<property name="nomeWar" value="WAnt" />
 	
 	<target name="compilar">
-		<deltree dir="${base}/build/classes" />
+		<delete dir="${base}/build/classes" />
 		<mkdir dir="${classes}" />
 		<javac includeantruntime="false" srcdir="${source}" destdir="${classes}" />
 		<antcall target="gerarWar" />
 	</target>	
 	<target name="gerarWar">
-		<war warfile="WAnt.war" needxmlfile="false">
+		<war warfile="${nomeWar}.war" needxmlfile="false">
 			<fileset dir="${WebContent1}" />
 			<fileset dir="${WebContent2}" />
 		</war>
 		<antcall target="deployWar" />
 	</target>	
-	<target name="deployWar">
-		<copy file="${base}/WAnt.war" todir="${tomcat.deployment}"/>
-		<delete file="${base}/WAnt.war" />
+	<target name="deployWar" depends="undeployWar">
+		<copy file="${base}/${nomeWar}.war" todir="${tomcat.deployment}"/>
+		<delete file="${base}/${nomeWar}.war" />
+	</target>
+	<target name="undeployWar">
+		<delete file="${tomcat.deployment}/${nomeWar}.war" />
+		<delete dir="${tomcat.deployment}/${nomeWar}"/>
 	</target>
 	
 	<target name="iniciarTomcat8">

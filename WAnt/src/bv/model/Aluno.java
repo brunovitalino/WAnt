@@ -1,7 +1,7 @@
 package bv.model;
 
 public class Aluno {
-	private String nome = "Bruno";
+	private String nome = "BrunoXxX";
 
 	public String getNome() {
 		return nome;
