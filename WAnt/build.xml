@@ -11,14 +11,19 @@
 	<!-- Configura o diretorio que possui o conteudo web -->
 	<property name="WebContent"	value="${basedir}/WebContent" />
 	<property name="web.xml"	value="${WebContent}/WEB-INF/web.xml" />
+	<tstamp prefix="build-info">
+		<format property="data-atual" pattern="d-MMMM-yyyy" locale="pt" />
+		<format property="hora-atual" pattern="hh:mm:ss a z" locale="pt" />
+		<format property="ano-mes-dia" pattern="yyyy-MM-dd" locale="en" />
+	</tstamp>
+	<!-- Configura o diretorio remoto do FTP da aplicacao, caso possua -->
+	<property name="ftp-remotedir" value="wars-enviados/${contexto-nome}/${build-info.ano-mes-dia}" />
 	<!-- Configura o nome do context dessa aplicacao -->
 	<property name="war-nome"	value="${contexto-nome}"/>
 	<!-- Configura o endereco da pasta de instalacao do Tomcat -->
 	<property name="catalina.home"	value="C:/Projetos/Apache/apache-tomcat-8.5.14"/>
 	<!-- Configura o diretorio que possui os JARs que serao usados com Ant -->
 	<property name="ant.lib"		value="${basedir}/WebContent/WEB-INF/lib" />
-	
-	
 
 	<!-- Configura o diretorio que possui os JARs que serao usados com Ant -->
 	<property name="ant.lib"	value="${basedir}/WebContent/WEB-INF/lib" />
@@ -61,13 +66,13 @@
 		<war warfile="${build}/${war-nome}.war" webxml="${web.xml}">
 			<classes dir="${classes}" />
 			<fileset dir="${WebContent}">
-				<!-- Need to exclude it since webxml is an attribute of the war tag above -->
+				<!-- Precisa excluir o web.xml pois webxml ja e um atibuto da tag war acima -->
 				<exclude name="WEB-INF/web.xml" />
 			</fileset>
 			<manifest>
 				<attribute name="Built-By" value="${desenvolvedor}" />
-				<attribute name="Built-On" value="${build-info.current-date}" />
-				<attribute name="Built-At" value="${build-info.current-time}" />
+				<attribute name="Built-On" value="${build-info.data-atual}" />
+				<attribute name="Built-At" value="${build-info.hora-atual}" />
 			</manifest>
 		</war>		
 	</target>
@@ -127,4 +132,24 @@
 		/>
 	</target>
 
+	<target name="ftp" depends="" description="envia o arquivo war para o servidor">
+		<ftp 
+			server="${ftp-servidor}" remotedir="${ftp-remotedir}"
+			userid="${ftp-usuario.id}" password="${ftp-usuario.senha}"
+			action="mkdir" verbose="yes">
+		</ftp>
+		<ftp 
+			server="${ftp-servidor}" remotedir="${ftp-remotedir}"
+			userid="${ftp-usuario.id}" password="${ftp-usuario.senha}"
+			action="send" verbose="yes" depends="yes">
+			<fileset file="${build}/${war-nome}" />
+		</ftp>
+	</target>
+
+	<target name="mail-upload-complete">
+		<mail from="ant@bv.com"
+		      tolist="bv@bv.com"
+		      subject="${war-nome} foi enviado para o servidor"
+		      message="O arquivo ${war-nome} foi enviado  ${ftp-servidor} em ${ftp-remotedir}"/>
+	</target>
 </project>
