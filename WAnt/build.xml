@@ -1,43 +1,130 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project default="compilar" name="Automacao com Ant" basedir=".">
-	<property name="tomcat" value="C:/Projetos/Apache/apache-tomcat-8.5.14" />
-	<property name="tomcat.deployment" value="${tomcat}/webapps" />
-	<property name="tomcat.bin" value="${tomcat}/bin" />
-	<property name="base" value="." />
-	<property name="source" value="${base}/src" />
-	<property name="WebContent1" value="${base}/build" />
-	<property name="classes" value="${WebContent1}/WEB-INF/classes" />
-	<property name="WebContent2" value="${base}/WebContent" />
-	<property name="nomeWar" value="WAnt" />
+<project name="WAnt" default="deploy-webapp" basedir=".">
 	
-	<target name="compilar">
-		<delete dir="${base}/build/classes" />
+	<!-- O arquivo build.properties e referenciado pelo build.xml -->
+	<property file="build.properties" />
+	
+	<!-- Configuracoes basicas de diretorios fontes e classes -->
+	<property name="source"		value="${basedir}/src" />
+	<property name="build"		value="${basedir}/build" />
+	<property name="classes"	value="${build}/classes" />
+	<!-- Configura o diretorio que possui o conteudo web -->
+	<property name="WebContent"	value="${basedir}/WebContent" />
+	<property name="web.xml"	value="${WebContent}/WEB-INF/web.xml" />
+	<!-- Configura o nome do context dessa aplicacao -->
+	<property name="war-nome"	value="${contexto-nome}"/>
+	<!-- Configura o endereco da pasta de instalacao do Tomcat -->
+	<property name="catalina.home"	value="C:/Projetos/Apache/apache-tomcat-8.5.14"/>
+	<!-- Configura o diretorio que possui os JARs que serao usados com Ant -->
+	<property name="ant.lib"		value="${basedir}/WebContent/WEB-INF/lib" />
+	
+	
+
+	<!-- Configura o diretorio que possui os JARs que serao usados com Ant -->
+	<property name="ant.lib"	value="${basedir}/WebContent/WEB-INF/lib" />
+	<!-- Configura Catalina-Ant JARs -->
+	<!-- Nota: Ate o tomcat6, era apenas 1 JAR, agora sao 4 JARs -->
+	<path id="ant.lib.id">
+		<fileset dir="${ant.lib}">
+			<include name="catalina-ant.jar"/>
+			<include name="tomcat-coyote.jar"/>
+			<include name="tomcat-util.jar"/>
+			<include name="tomcat-juli.jar"/>
+		</fileset>
+	</path>
+	<!-- Targets/Tasks Customizadas -->
+	<taskdef name="catalina-start"		classname="org.apache.catalina.ant.StartTask"		classpathref="ant.lib.id"/>
+	<taskdef name="catalina-stop"		classname="org.apache.catalina.ant.StopTask"		classpathref="ant.lib.id"/>
+	<taskdef name="catalina-undeploy"	classname="org.apache.catalina.ant.UndeployTask"	classpathref="ant.lib.id"/>
+	<taskdef name="catalina-deploy"		classname="org.apache.catalina.ant.DeployTask"		classpathref="ant.lib.id"/>
+	<taskdef name="catalina-reload"		classname="org.apache.catalina.ant.ReloadTask"		classpathref="ant.lib.id"/>
+	<taskdef name="catalina-list"		classname="org.apache.catalina.ant.ListTask"		classpathref="ant.lib.id"/>
+	<taskdef name="catalina-findleaks"	classname="org.apache.catalina.ant.FindLeaksTask"	classpathref="ant.lib.id"/>
+	<taskdef name="catalina-resources"	classname="org.apache.catalina.ant.ResourcesTask"	classpathref="ant.lib.id"/>
+	<!-- OUTRA FORMA
+		Poupar tempo utilizando o catalina-tasks.xml. Ele esta configurado para importar todos os JARs do tomcat,
+		onde 4 deles estarao as tasks que precisamos (start, stop, undeploy, deploy, etc)
+	<import file="${catalina.home}/bin/catalina-tasks.xml"/>
+	-->
+	
+	<!-- Targets Executaveis -->
+	<target name="compilar" depends="" description="Compile web application">
+		<mkdir dir="${build}" />
+		<delete dir="${classes}" />
 		<mkdir dir="${classes}" />
 		<javac includeantruntime="false" srcdir="${source}" destdir="${classes}" />
-		<antcall target="gerarWar" />
-	</target>	
-	<target name="gerarWar">
-		<war warfile="${nomeWar}.war" needxmlfile="false">
-			<fileset dir="${WebContent1}" />
-			<fileset dir="${WebContent2}" />
-		</war>
-		<antcall target="deployWar" />
-	</target>	
-	<target name="deployWar" depends="undeployWar">
-		<copy file="${base}/${nomeWar}.war" todir="${tomcat.deployment}"/>
-		<delete file="${base}/${nomeWar}.war" />
-	</target>
-	<target name="undeployWar">
-		<delete file="${tomcat.deployment}/${nomeWar}.war" />
-		<delete dir="${tomcat.deployment}/${nomeWar}"/>
 	</target>
 	
-	<target name="iniciarTomcat8">
-		<exec executable="${tomcat.bin}/startup.bat"/>
+	<target name="gerarWar-webapp" depends="compilar">
+		<mkdir dir="${build}" />
+		<delete file="${build}/${war-nome}.war" />
+		<war warfile="${build}/${war-nome}.war" webxml="${web.xml}">
+			<classes dir="${classes}" />
+			<fileset dir="${WebContent}">
+				<!-- Need to exclude it since webxml is an attribute of the war tag above -->
+				<exclude name="WEB-INF/web.xml" />
+			</fileset>
+			<manifest>
+				<attribute name="Built-By" value="${desenvolvedor}" />
+				<attribute name="Built-On" value="${build-info.current-date}" />
+				<attribute name="Built-At" value="${build-info.current-time}" />
+			</manifest>
+		</war>		
+	</target>
+
+	<!-- Adiciona a nossa aplicacao ao Tomcat -->
+	<target name = "deploy-webapp" depends="gerarWar-webapp, undeploy-webapp">
+		<catalina-deploy	url="${tomcat.manager.url}"
+	    					username="${tomcat.manager.usuario}"
+	    					password="${tomcat.manager.senha}"
+	    					path="/${contexto-nome}"
+	    					war="file:${build}/${war-nome}.war"
+		/>
+	</target>
+
+	<!-- Remove a nossa aplicacao do Tomcat -->
+	<!--
+		Nota: As vezes o deploy nao e concluido devido ao leak de recursos entao
+		torna-se necessario editar o arquivo context.xml que se encontra na pasta
+		"tomcat/config" e incluir um dos atributos antiResourceLocking="true" ou
+		antiJARLocking="true". Como antiJARLocking e um subset de antiResourceLocking,
+		entao escolha apenas um dos dois como true pra evitar trabalho dobrado pelo tomcat
+	-->
+	<target name = "undeploy-webapp">
+		<catalina-undeploy	url="${tomcat.manager.url}"
+	    					username="${tomcat.manager.usuario}"
+	    					password="${tomcat.manager.senha}"
+	    					path="/${contexto-nome}"
+	    					failonerror="false"
+		/>
+	</target>
+
+	<!-- Inicia a nossa aplicacao no Tomcat -->
+	<target name = "start-webapp">
+		<catalina-start		url="${tomcat.manager.url}"
+	    					username="${tomcat.manager.usuario}"
+							password="${tomcat.manager.senha}"
+	    					path="/${contexto-nome}"
+		/>
 	</target>
 	
-	<target name="finalizarTomcat8">
-		<exec executable="${tomcat.bin}/shutdown.bat"/>
+	<!-- Paraliza a nossa aplicacao no Tomcat -->
+	<target name = "stop-webapp">
+		<catalina-stop		url="${tomcat.manager.url}"
+							username="${tomcat.manager.usuario}"
+	       					password="${tomcat.manager.senha}"
+	       					path="/${contexto-nome}"
+	       					failonerror="false"
+		/>
 	</target>
-	
+
+	<!-- Recarrega a nossa aplicacao no Tomcat -->
+	<target name="reload-webapp" description="Reload web application">
+		<catalina-reload	url="${tomcat.manager.url}"
+							username="${tomcat.manager.usuario}"
+							password="${tomcat.manager.senha}"
+							path="/${contexto-nome}"
+		/>
+	</target>
+
 </project>

@@ -17,7 +17,7 @@
 			%>
 				<tr>
 					<td><%=visitante.getNome()%></td>
-					<td></td>
+					<td><%=visitante.getTelefone()%></td>
 				</tr>
 		</table>
 	</div>
